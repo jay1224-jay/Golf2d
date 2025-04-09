@@ -1,23 +1,25 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 #include <cmath>
+#include <string>
+
 using namespace std;
 #define msg(x) cout << x << endl;
 #define pi 3.1415
 #define WIDTH  800
 #define HEIGHT 600
 
-double getDistance(double x1, double y1, double x2, double y2) {
+float getDistance(float x1, float y1, float x2, float y2) {
     return sqrt( pow(x1-x2, 2) + pow(y1-y2, 2) );
 }
 
 class Ball {
 
     public:
-        double x, y, dx, dy, velocity, a, r;
+        float x, y, dx, dy, velocity, a, r;
         sf::CircleShape entity;
 
-        Ball(double radius) {
+        Ball(float radius) {
             entity.setRadius(radius);
             r = radius;
             dx = 0;
@@ -28,7 +30,7 @@ class Ball {
             entity.setFillColor(sf::Color::Green);
         }
 
-        void setPosition(double _x, double _y) {
+        void setPosition(float _x, float _y) {
             x = _x;
             y = _y;
             entity.setPosition({_x, _y});
@@ -46,6 +48,9 @@ class Ball {
                 break;
             case 3:
                 c = sf::Color::Red;
+                break;
+            case 4:
+                c = sf::Color::White;
             }
             entity.setFillColor(c);
         }
@@ -91,17 +96,17 @@ class Ball {
             velocity = 5;
             dx = (_x - x);
             dy = (_y - y);
-            double tmp = sqrt(dx*dx + dy*dy);
+            float tmp = sqrt(dx*dx + dy*dy);
             dx *= velocity/tmp;
             dy *= velocity/tmp;
         }
 
-        void shoot(double mouse_x, double mouse_y) {
+        void shoot(float mouse_x, float mouse_y) {
             a = -0.05;
             velocity = getDistance(mouse_x, mouse_y, x+r, y+r) / 20;
             dx = (x + r - mouse_x);
             dy = (y + r - mouse_y);
-            double tmp = sqrt(dx*dx + dy*dy);
+            float tmp = sqrt(dx*dx + dy*dy);
             dx *= velocity/tmp;
             dy *= velocity/tmp;
             // msg(velocity);
@@ -112,7 +117,7 @@ class Ball {
 class Arrow {
 
     public:
-        double x, y, width, height;
+        float x, y, width, height;
         sf::RectangleShape entity;
 
         Arrow(int _thickness) {
@@ -120,19 +125,46 @@ class Arrow {
             entity.setFillColor(sf::Color::Blue);
         }
 
-        void pointTo(double x1, double y1, double x2, double y2) {
+        void pointTo(float x1, float y1, float x2, float y2) {
             // (x1, y1) is head, (x2, y2) is tail
-            double angle;
+            float angle;
             angle = -1*atan((x1-x2)/(y1-y2));
-            msg(angle * 180 /pi)
-            height = getDistance(x1, y1, x2, y2) * 0.75;
+            height = getDistance(x1, y1, x2, y2);
+            float vx = x1-x2, vy = y1-y2;
             entity.setSize({width, height});
-            entity.setPosition({(x1+x2)/2 + (height/2 * sin(angle)), (y1+y2)/2 - (height/2 * cos(angle))});
+            entity.setPosition({static_cast<float>((x1+x2)/2 + (height/2 * sin(angle)) + ( width/2 * (1 ? vy < 0 : 1) * (vy) / sqrt(pow(vx, 2)+pow(vy, 2)))),
+                    static_cast<float>((y1+y2)/2 - (height/2 * cos(angle)) + ( width/2 * (1 ? vy < 0 : 1) * (vx) / sqrt(pow(vx, 2)+pow(vy, 2))))});
             entity.setRotation(sf::radians(angle));
 
         }
 
 };
+
+class Hole {
+    public: 
+
+        float radius;
+        sf::CircleShape entity;
+
+        Hole(float _radius) {
+            radius = _radius;
+            entity.setRadius(radius);
+            entity.setFillColor(sf::Color::Black);
+        }
+
+        bool checkIn(Ball b) {
+            float d = getDistance(b.x, b.y, entity.getPosition().x, entity.getPosition().y);
+
+            if ( d <= radius ) {
+                return 1;
+            }
+
+            return 0;
+        }
+    
+
+};
+            
 
 enum {clicked, not_clicked, aiming, idle};
 
@@ -142,15 +174,27 @@ int main()
     sf::RenderWindow window(sf::VideoMode({WIDTH, HEIGHT}), "My window");
     window.setFramerateLimit(60); // call it once after creating the window
 
-    Ball b(20);
+    Ball b(10);
     b.setPosition(300, 200);
     b.velocity = 0;
     b.dx = 0;
     b.dy = 0;
     b.a = -0.05;
+    b.setColor(4); // white
+
+    Hole hole(15);
+    hole.entity.setPosition({WIDTH/3, HEIGHT/3});
 
 
-    Arrow aimLine(10);
+    Arrow aimLine(5);
+    aimLine.entity.setFillColor(sf::Color(250, 150, 100));
+
+
+    int in_count = 0;
+    sf::Font myfont("arial.ttf");
+    sf::Text countText(myfont);
+    countText.setCharacterSize(24);
+    countText.setFillColor(sf::Color::White);
 
 
     int status = not_clicked, pre_status, player_status = idle;
@@ -171,7 +215,7 @@ int main()
                 status = not_clicked;
         }
 
-        window.clear(sf::Color::Black);
+        window.clear(sf::Color(11, 112, 38));
 
         // cout << b.isMoving() << endl;
         if ( player_status == idle ) {
@@ -182,7 +226,7 @@ int main()
             if ( status == clicked ) {
                 mx = sf::Mouse::getPosition(window).x;
                 my = sf::Mouse::getPosition(window).y;
-                aimLine.pointTo(b.getCenter().first, b.getCenter().second, mx, my);
+                aimLine.pointTo(2 * b.getCenter().first - mx, 2 * b.getCenter().second - my, b.getCenter().first, b.getCenter().second);
             } else if ( status == not_clicked ) {
                 // shoot the ball
                 b.shoot(mx, my);
@@ -191,12 +235,25 @@ int main()
             window.draw(aimLine.entity);
 
         }
-        // msg(b.y)
+
         // update
         b.update();
 
+        // check hole
+        if ( hole.checkIn(b) ) {
+            b.velocity = 0;
+            b.x = WIDTH/1.2;
+            b.y = HEIGHT/1.2;
+            ++in_count;
+        }
+
+        countText.setString("Score: " + to_string(in_count));
+
         // draw
         window.draw(b.entity);
+        window.draw(hole.entity);
+        window.draw(countText);
+
 
 
         window.display();
