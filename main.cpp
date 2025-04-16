@@ -3,11 +3,14 @@
 #include <cmath>
 #include <string>
 
-using namespace std;
+#include "common.h"
 #define msg(x) cout << x << endl;
 #define pi 3.1415
 #define WIDTH  800
 #define HEIGHT 600
+
+using namespace std;
+
 
 float getDistance(float x1, float y1, float x2, float y2) {
     return sqrt( pow(x1-x2, 2) + pow(y1-y2, 2) );
@@ -69,7 +72,7 @@ class Ball {
             entity.setPosition({x, y});
 
             if ( abs(velocity) < abs(a)*2 ) {
-                msg("stop")
+
                 dx = 0;
                 dy = 0;
                 velocity = 0;
@@ -82,10 +85,10 @@ class Ball {
                 }
             }
 
-            if ( x+2*r >= WIDTH || x <= 0 ) {
+            if ( x+2*r + 1>= WIDTH || x <= 1 ) {
                 dx *= -1;
             }
-            if ( y+2*r >= HEIGHT || y <= 0 ) {
+            if ( y+2*r + 1 >= HEIGHT || y <= 1 ) {
                 dy *= -1;
             }
 
@@ -103,7 +106,7 @@ class Ball {
 
         void shoot(float mouse_x, float mouse_y) {
             a = -0.05;
-            velocity = getDistance(mouse_x, mouse_y, x+r, y+r) / 20;
+            velocity = min(getDistance(mouse_x, mouse_y, x+r, y+r) / 30, 20.f);
             dx = (x + r - mouse_x);
             dy = (y + r - mouse_y);
             float tmp = sqrt(dx*dx + dy*dy);
@@ -141,7 +144,7 @@ class Arrow {
 };
 
 class Hole {
-    public: 
+    public:
 
         float radius;
         sf::CircleShape entity;
@@ -161,10 +164,10 @@ class Hole {
 
             return 0;
         }
-    
+
 
 };
-            
+
 
 enum {clicked, not_clicked, aiming, idle};
 
@@ -172,14 +175,14 @@ int main()
 {
     // create the window
     sf::RenderWindow window(sf::VideoMode({WIDTH, HEIGHT}), "My window");
-    window.setFramerateLimit(60); // call it once after creating the window
+    window.setFramerateLimit(60);
 
     Ball b(10);
     b.setPosition(300, 200);
     b.velocity = 0;
     b.dx = 0;
     b.dy = 0;
-    b.a = -0.05;
+    b.a = -0.0001;
     b.setColor(4); // white
 
     Hole hole(15);
@@ -188,6 +191,18 @@ int main()
 
     Arrow aimLine(5);
     aimLine.entity.setFillColor(sf::Color(250, 150, 100));
+
+    Wall walls[5];
+
+    // Wall initialization
+    for ( int i = 0 ; i < sizeof(walls)/sizeof(Wall) ; ++i ) {
+        int _y;
+        _y = 50;
+        if ( i%2 == 0 ) {
+            _y = HEIGHT/2;
+        }
+        walls[i].setXY(10 + (walls[i].width + 50) * i, _y);
+    }
 
 
     int in_count = 0;
@@ -217,7 +232,8 @@ int main()
 
         window.clear(sf::Color(11, 112, 38));
 
-        // cout << b.isMoving() << endl;
+
+        // condition
         if ( player_status == idle ) {
             if ( status == clicked && !b.isMoving() ) {
                 player_status = aiming;
@@ -235,6 +251,23 @@ int main()
             window.draw(aimLine.entity);
 
         }
+
+        // collision
+        int collision_signal;
+        for ( int i = 0 ; i < sizeof(walls)/sizeof(Wall) ; ++i ) {
+            if ( collision_signal = walls[i].CheckCollision(b.entity) ) {
+                msg("hit")
+                if ( collision_signal == 1 ) {
+                    // change dy
+                    b.dy *= -1;
+                } else if ( collision_signal == 2 ) {
+                    b.dx *= -1;
+                }
+                break;
+            }
+        }
+
+
 
         // update
         b.update();
@@ -254,6 +287,9 @@ int main()
         window.draw(hole.entity);
         window.draw(countText);
 
+        for ( int i = 0 ; i < sizeof(walls)/sizeof(Wall) ; ++i ) {
+            window.draw(walls[i].entity);
+        }
 
 
         window.display();
