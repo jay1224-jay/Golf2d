@@ -7,6 +7,11 @@
 #define WIDTH  800
 #define HEIGHT 600
 
+#define grassT  make_tuple(255, 255, 255)
+#define wallT   make_tuple(0, 0, 0)
+#define startT  make_tuple(168, 230, 29)
+#define endT    make_tuple(237, 28, 36)
+
 class Wall {
 
 public:
@@ -24,6 +29,9 @@ public:
     int CheckCollision(sf::CircleShape ball);
 
 };
+
+int getPixelType(sf::Color);
+std::vector<Wall> mapInit(sf::Image);
 
 
 #endif // COMMON_H

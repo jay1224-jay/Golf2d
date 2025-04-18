@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cmath>
 #include <string>
+#include <vector>
 
 #include "common.h"
 #define msg(x) cout << x << endl;
@@ -33,10 +34,10 @@ class Ball {
             entity.setFillColor(sf::Color::Green);
         }
 
-        void setPosition(float _x, float _y) {
-            x = _x;
-            y = _y;
-            entity.setPosition({_x, _y});
+        void setPosition(sf::Vector2f point) {
+            x = point.x;
+            y = point.y;
+            entity.setPosition({x, y});
         }
 
         void setColor(int code) {
@@ -178,7 +179,6 @@ int main()
     window.setFramerateLimit(60);
 
     Ball b(10);
-    b.setPosition(300, 200);
     b.velocity = 0;
     b.dx = 0;
     b.dy = 0;
@@ -186,26 +186,52 @@ int main()
     b.setColor(4); // white
 
     Hole hole(15);
-    hole.entity.setPosition({WIDTH/3, HEIGHT/3});
 
 
     Arrow aimLine(5);
     aimLine.entity.setFillColor(sf::Color(250, 150, 100));
 
-    Wall walls[5];
 
-    // Wall initialization
-    for ( int i = 0 ; i < sizeof(walls)/sizeof(Wall) ; ++i ) {
-        int _y;
-        _y = 50;
-        if ( i%2 == 0 ) {
-            _y = HEIGHT/2;
+    // === Map Initialization ===
+
+
+    const sf::Image img("map1.png");
+
+    int mapw, maph;
+    mapw = img.getSize().x;
+    maph = img.getSize().y;
+
+    float mapscale = WIDTH/mapw;
+
+    sf::Vector2f StartPoint, HolePoint;
+
+    sf::Color tmp;
+    for ( unsigned int y = 0 ; y < maph ; ++y ) {
+        for ( unsigned int x = 0 ; x < mapw ; ++x ) {
+            tmp = img.getPixel({x, y});
+            int type = getPixelType(tmp);
+            if ( type == 3 ) {
+                msg(x);
+                msg(y);
+                StartPoint = { x*mapscale, y*mapscale };
+            } else if ( type == 4 ) {
+                HolePoint = { x*mapscale, y*mapscale };
+            }
         }
-        walls[i].setXY(10 + (walls[i].width + 50) * i, _y);
     }
 
+    // 
+    // use for another use
+    b.setPosition(StartPoint);
 
-    int in_count = 0;
+
+    hole.entity.setPosition(HolePoint);
+
+    vector<Wall> walls = mapInit(img); // define in map.cpp
+
+    // === Map Initialization ===
+
+    int strike_number = 0;
     sf::Font myfont("arial.ttf");
     sf::Text countText(myfont);
     countText.setCharacterSize(24);
@@ -247,6 +273,7 @@ int main()
                 // shoot the ball
                 b.shoot(mx, my);
                 player_status = idle;
+                ++strike_number;
             }
             window.draw(aimLine.entity);
 
@@ -254,9 +281,8 @@ int main()
 
         // collision
         int collision_signal;
-        for ( int i = 0 ; i < sizeof(walls)/sizeof(Wall) ; ++i ) {
+        for ( int i = 0 ; i < walls.size() ; ++i ) {
             if ( collision_signal = walls[i].CheckCollision(b.entity) ) {
-                msg("hit")
                 if ( collision_signal == 1 ) {
                     // change dy
                     b.dy *= -1;
@@ -275,19 +301,18 @@ int main()
         // check hole
         if ( hole.checkIn(b) ) {
             b.velocity = 0;
-            b.x = WIDTH/1.2;
-            b.y = HEIGHT/1.2;
-            ++in_count;
+            b.entity.setPosition(StartPoint);
+            strike_number = 0;
         }
 
-        countText.setString("Score: " + to_string(in_count));
+        countText.setString("Strike number: " + to_string(strike_number));
 
         // draw
         window.draw(b.entity);
         window.draw(hole.entity);
         window.draw(countText);
 
-        for ( int i = 0 ; i < sizeof(walls)/sizeof(Wall) ; ++i ) {
+        for ( int i = 0 ; i < walls.size(); ++i ) {
             window.draw(walls[i].entity);
         }
 
